@@ -1,0 +1,8 @@
+.ipynb_checkpoints
+__pycache__
+outputs
+ckpts
+data
+venv
+*swp
+slurm
