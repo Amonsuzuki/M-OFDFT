@@ -1,6 +1,6 @@
 import numpy as np
 import torch
-import e3nn
+from e3nn import o3
 
 torch.pi = np.pi
 
@@ -32,7 +32,7 @@ def e3nn_change_of_coord_D(mol):
         [1., 0., 0.],
         [0., 1., 0.]
     ])
-    irreps = e3nn.o3.Irreps(
+    irreps = o3.Irreps(
         '+'.join( f'{l}e' for l in map(mol.bas_angular, range(mol.nbas)))
     )
     return irreps.D_from_matrix(cod)
@@ -40,7 +40,7 @@ def e3nn_change_of_coord_D(mol):
 
 def rotation_D(mol, per_atom_rotations):
     per_basis_D = [
-        e3nn.o3.Irrep(f'{l}e').D_from_matrix(per_atom_rotations[a])
+        o3.Irrep(f'{l}e').D_from_matrix(per_atom_rotations[a])
         for l, a in ((mol.bas_angular(i), mol.bas_atom(i)) for i in range(mol.nbas))
     ]
     return torch.block_diag(*per_basis_D)

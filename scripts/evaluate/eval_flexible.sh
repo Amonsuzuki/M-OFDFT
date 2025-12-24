@@ -13,4 +13,5 @@ python evaluate.py \
     --ckpt-path $CKPT_PATH --reparam-spec $REPARAM_SPEC \
     --init $INIT --steps $STEPS --lr $LR \
     --output-dir $OUTPUT_ROOT \
+    --ngpu 4 --nworker 4 \
     $EXTRACMD
