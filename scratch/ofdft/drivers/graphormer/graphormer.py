@@ -56,7 +56,7 @@ class GraphormerOFDFTDriver(BaseOFDFTDriver):
         self.x = make_param(x)
         self.pos = make_param(pos)
 
-        # building coeff mask range, (N_atom, coeff_dim)
+        # building atom coeff mask range, (N_atom, coeff_dim)
         coeff_mask = self.build_coeff_mask()
         self.coeff_mask = make_param(coeff_mask)
         self.reparam_version = reparam
@@ -215,6 +215,7 @@ class GraphormerOFDFTDriver(BaseOFDFTDriver):
 
     def predict_delta_coeff(self, coeff=None, project=True):
         with torch.no_grad():
+            # where is coeff_for_input?
             if coeff is None:
                 coeff = self.coeff_for_input
             # get model_input and coefficients
