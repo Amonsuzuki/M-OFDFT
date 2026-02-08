@@ -10,4 +10,4 @@ slurm
 .env*.local
 tmp*
 
-/target
+**/target/
