@@ -8,3 +8,6 @@ venv
 slurm
 .vercel
 .env*.local
+tmp*
+
+/target
