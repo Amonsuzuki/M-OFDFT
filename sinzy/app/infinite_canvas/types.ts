@@ -6,5 +6,6 @@ export type CodeBlockModel = {
 	pos: Vec2;
 	size: Vec2;
 	text: string;
+	fileName?: string;
 };
 

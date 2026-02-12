@@ -132,7 +132,7 @@ def get_data_path(args):
 
 def get_data(idx):
     data_path = get_data_path(args)
-    example = np.load(os.path.join(data_path, f'{idx}_test_data.npz'}, allow_pickle=True)['data'].item()
+    example = np.load(os.path.join(data_path, f'{idx}_test_data.npz'), allow_pickle=True)['data'].item()
     return example
 
 def get_init_coeff_and_energy(args, mol, auxmol):

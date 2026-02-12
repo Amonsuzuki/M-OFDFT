@@ -3,6 +3,8 @@
 // React hooks for lifecycle and DOM reference
 import { useEffect, useRef, useState } from "react";
 
+import { openRunEvents, startRun, stopRun, type RunEvent } from "../backend/backend";
+
 // import child functions
 import type { CodeBlockModel, Vec2 } from "./infinite_canvas/types";
 import { useCamera } from "./infinite_canvas/camera";
@@ -16,11 +18,111 @@ import styles from "./infinite_canvas/InfiniteCanvas.module.css";
 // browser default zooming is not deactivated except on canvas
 
 
-const res = await fetch("http://127.0.0.1:8787/hello")
-const text = await res.text();
-console.log(text);
+const BASE_URL = "http://127.0.0.1:8787";
+
+type RunState = {
+	runId: string,
+	blockId: string,
+	logs: RunEvent[];
+};
+
+/*
+async function runScript(name) {
+	const res = await fetch("http://127.0.0.1:8787/api/run", {
+		method: "POST",
+		headers: { "Content-Type": "application/json" },
+		body: JSON.stringify({ name }),
+	});
+	const { run_id } = await res.json();
+
+	const es = new EventSource(`http://127.0.0.1:8787/api/run/${run_id}/events`);
+	
+	es.onmessage = (msg) => {
+		const evt = JSON.parse(msg.data);
+		console.log(evt);
+	};
+
+	es.onerror = () => {
+		es.close();
+	};
+
+	return { run_id, es };
+}
+
+async function stopRun(run_id) {
+	await fetch(`http://127.0.0.1:8787/api/run/${run_id}/stop`, { method: "POST" });
+}
+*/
 
 export default function InfiniteCanvas() {
+	const [runState, setRunState] = useState<RunState | null>(null);
+	const esRef = useRef<EventSource | null>(null);
+
+	const appendEvent = (evt: RunEvent) => {
+		setRunState((prev) => {
+			if (!prev) return prev;
+			return { ...prev, logs: [...prev.logs, evt] };
+		});
+	};
+
+	const onRunBlock = async (blockId: string, fileName: string) => {
+		try {
+			console.log("[onRunBlock] starting", { blockId, fileName });
+
+			esRef.current?.close();
+			esRef.current = null;
+			setRunState(null);
+
+			const out = await startRun(BASE_URL, fileName);
+			console.log("[onRunBlock] startRun response", out);
+
+			const run_id = (out as any).run_id ?? (out as any).runId;
+			if (!run_id) throw new Error("stateRun returned no run_id/runId");
+
+			setRunState({ runId: run_id, blockId, logs: [] });
+
+			const es = openRunEvents(
+				BASE_URL,
+				run_id,
+				(evt) => {
+					console.log("[SSE event]", evt);
+					appendEvent(evt);
+
+					if (evt.type == "exit") {
+						esRef.current?.close();
+						esRef.current = null;
+					}
+				},
+				(err) => {
+					console.error("[SSE error]", err);
+					appendEvent({ type: "error", message: String(err) } as any);
+				}
+			);
+
+			esRef.current = es;
+			console.log("[onRunBlock] SSE opened");
+		} catch (e: any) {
+			console.error("[onRunBlock] failed", e);
+			setRunState({ runId: "error", blockId, logs: [{ type: "error", message: String(e?.message ?? e) } as any] });
+		}
+	};
+
+	const onStop = async () => {
+		if (!runState) return;
+		await stopRun(BASE_URL, runState.runId);
+		esRef.current?.close();
+		esRef.current = null;
+	};
+
+	// ensure SSE is closed on mount
+	useEffect(() => {
+		return () => {
+			esRef.current?.close();
+			esRef.current = null;
+		};
+	}, []);
+
+
 	// Reference to the <canvas> DOM element
 	const canvasRef = useRef<HTMLCanvasElement>(null);
 
@@ -41,7 +143,13 @@ export default function InfiniteCanvas() {
 	const AddBlock = (p: Vec2) => {
 		setBlocks((prev) => [
 			...prev,
-			{ id: crypto.randomUUID(), pos: p, size: { x: 260, y: 160 }, text: "#include <bits/stdc++.h>" },
+			{
+				id: crypto.randomUUID(),
+				pos: p,
+				size: { x: 260, y: 160 },
+				text: 'print("hello")\n',
+				fileName: "hello.py", // if it is undefined, onRunBlock doesn't work
+			},
 		]);
 	};
 
@@ -56,6 +164,7 @@ export default function InfiniteCanvas() {
 		.then(files => {
 			setBlocks(files.map((f: any, i: number) => ({
 				id: crypto.randomUUID(),
+				fileName: f.name,
 				pos: { x: i * 300, y: 0 },
 				size: { x: 260, y: 160 },
 				text: f.text
@@ -170,6 +279,7 @@ export default function InfiniteCanvas() {
 			Add code block
 		</button>
 
+
 		<div
 		className={styles.worldLayer}
 		style={{
@@ -219,9 +329,25 @@ export default function InfiniteCanvas() {
 			>
 			×
 			</button>
+			<button
+			type="button"
+			onPointerDown={(e) => e.stopPropagation()}
+			onClick={() => {
+				console.log("[Run click]", { id: b.id, fileName: b.fileName });
+				if (!b.fileName) {
+					appendEvent({ type: "error", message: "This block has no file name. not loaded from /scratch." } as any);
+					return;
+				}
+				onRunBlock(b.id, b.fileName);
+			}}
+			style={{ position: "absolute", right: 28, top: 6, zIndex: 2 }}
+			>
+			Run
+			</button>
 		</div>
 		))}
 		</div>
+
 		</div>
 	);
 }

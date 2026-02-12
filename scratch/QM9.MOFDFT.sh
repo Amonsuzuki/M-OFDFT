@@ -1,5 +1,5 @@
 #!/bin/sh
-set -a
+set -aeux
 
 save_root=scratch/outputs/QM9.MOFDFT
 MOLECULE=qm9.qbe.isomer
@@ -15,7 +15,9 @@ INIT=minao
 EXTRACMD="--use-svd --use-local-frame --grid-level 2 --task-id -1 --task-count -1 --evaluate-force --add-delta-at-init"
 
 # run M-OFDFT
+echo ">>> about to run eval_flexible.sh"
 bash scratch/eval_flexible.sh
+echo ">>> finished eval_flexbile.sh, exit=$?"
 
 path=$OUTPUT_ROOT/total.csv
 # calculate statistics
