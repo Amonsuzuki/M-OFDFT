@@ -25,6 +25,22 @@ use uuid::Uuid;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 
 
+const REPO_ROOT: &str = "/home/amon/workspace/M-OFDFT";
+
+// CAUTION: Create micromamba environment from terminal.
+const MICROMAMBA_BIN: &str = "/usr/local/bin/micromamba";
+const MAMBA_ROOT_PREFIX: &str = "/home/amon/.local/share/mamba";
+const MAMBA_ENV_NAME: &str = "mofdft";
+
+fn mamba_run_prefix<'a>() -> [&'a str; 5] {
+    ["-r", MAMBA_ROOT_PREFIX, "run", "-n", MAMBA_ENV_NAME]
+}
+
+fn repo_root() -> PathBuf {
+    PathBuf::from(REPO_ROOT)
+}
+
+
 async fn hello() -> &'static str {
     "Hello from Rust backend"
 }
@@ -60,7 +76,7 @@ enum RunEvent {
 struct RunHandle {
     tx: broadcast::Sender<RunEvent>,
     child: Arc<Mutex<Child>>,
-    _tmp: TempDir,
+    _tmp: Option<TempDir>,
     log: Arc<Mutex<VecDeque<RunEvent>>>,
 }
 
@@ -138,45 +154,74 @@ async fn start_run(State(st): State<AppState>, Json(req): Json<RunRequest>) -> R
         return Err((StatusCode::NOT_FOUND, "Script not found".to_string()));
     }
 
-    let script_text = tokio::fs::read_to_string(&src_path)
-        .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to read script: {e}")))?;
+    // Decide root directory
+    let root = repo_root()
+        .canonicalize()
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Invalid REPO_ROOT: {e}")))?;
 
+    // prepare temp only if python
+    let mut tmp_opt: Option<TempDir> = None;
+    let mut tmp_script_opt: Option<PathBuf> = None;
 
-    let tmp = tempfile::tempdir().map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Tempdir error: {e}")))?;
-    let tmp_script = tmp.path().join("main.py");
-    tokio::fs::write(&tmp_script, script_text)
-        .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to write temp script: {e}")))?;
+    if req.name.ends_with(".py") {
+        let script_text = tokio::fs::read_to_string(&src_path)
+            .await
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to read script: {e}")))?;
+
+        let tmp = tempfile::tempdir()
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Tempdir error: {e}")))?;
+        let tmp_script = tmp.path().join("main.py");
+
+        tokio::fs::write(&tmp_script, script_text)
+            .await
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to write temp script: {e}")))?;
+        tmp_opt = Some(tmp);
+        tmp_script_opt = Some(tmp_script);
+    }
 
     let run_id = Uuid::new_v4().to_string();
     let (tx, _rx) = broadcast::channel::<RunEvent>(1024);
+    let log = Arc::new(Mutex::new(VecDeque::new()));
 
-
-    // -u + env PYTHONUNBUFFERED redices buffering, which improves live streaming.
+    // Build command
     let mut cmd = if req.name.ends_with(".py") {
-        let mut c = Command::new("python3");
-        c.arg("-u")
+        let tmp_script = tmp_script_opt.clone().unwrap();
+        let mut c = Command::new(MICROMAMBA_BIN);
+
+        c.args(mamba_run_prefix())
+            .arg("python")
+            .arg("-u")
             .arg(&st.runner_py)
-            .arg(&tmp_script)
+            .arg(tmp_script)
             .env("PYTHONUNBUFFERED", "1");
-            //.env_clear()
-            //.env("PATH", "/usr/bin:/bin")
         c
     } else if req.name.ends_with(".sh") {
-        let mut c = Command::new("bash");
+        let script_path = st.scratch_dir.join(&req.name);
+
+        let mut c = Command::new(MICROMAMBA_BIN);
+
         // not to copy script to temp, run directly
-        c.arg("-x").arg(st.scratch_dir.join(&req.name));
+        c.args(mamba_run_prefix())
+            .arg("bash")
+            .arg("-x")
+            .arg(script_path);
         c
     } else {
         return Err((StatusCode::BAD_REQUEST, "Unsupported file type".to_string()));
     };
 
-    let repo_root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
-    cmd.current_dir(&repo_root);
+    // Run from repo root
+    cmd.current_dir(&root);
     cmd.stdout(std::process::Stdio::piped());
     cmd.stderr(std::process::Stdio::piped());
 
+    record_and_send(
+        &log,
+        &tx,
+        RunEvent::Stdout { data: format!("CMD DEBUG: {:?}\n", cmd) },
+    ).await;
+
+    // Spawn
     let mut child = cmd
         .spawn()
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Failed to spawn python: {e}")))?;
@@ -186,8 +231,6 @@ async fn start_run(State(st): State<AppState>, Json(req): Json<RunRequest>) -> R
 
     let child = Arc::new(Mutex::new(child));
 
-    let log = Arc::new(Mutex::new(VecDeque::new()));
-
     // Store handle before streaming begins
     {
         let mut runs = st.runs.write().await;
@@ -196,13 +239,13 @@ async fn start_run(State(st): State<AppState>, Json(req): Json<RunRequest>) -> R
             RunHandle {
                 tx: tx.clone(),
                 child: child.clone(),
-                _tmp: tmp,
+                _tmp: tmp_opt,
                 log: log.clone(),
             },
         );
     }
 
-    record_and_send(&log, &tx, RunEvent::Started { command: format!("{:?}", cmd), cwd: repo_root.to_string_lossy().to_string() }).await;
+    record_and_send(&log, &tx, RunEvent::Started { command: format!("{:?}", cmd), cwd: root.to_string_lossy().to_string() }).await;
 
     // read stdout lines, parse trace prefix, broadcast events
     {
@@ -260,7 +303,8 @@ async fn start_run(State(st): State<AppState>, Json(req): Json<RunRequest>) -> R
         let child2 = child.clone();
 
         tokio::spawn(async move {
-            let timeout = Duration::from_secs(30);
+            // for abuse
+            let timeout = Duration::from_secs(30 * 60);
 
             let status = tokio::time::timeout(timeout, async {
                 let mut ch = child2.lock().await;
@@ -369,9 +413,10 @@ async fn stop_run(State(st): State<AppState>, Path(run_id): Path<String>) -> Res
 
 #[tokio::main]
 async fn main() {
-    let scratch_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../../scratch");
+    let scratch_dir = repo_root().join("scratch");
 
-    let runner_py = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("./runner.py");
+    let runner_py = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("./runner.py").canonicalize()
+        .expect("runner.py path invalid");
     if !runner_py.exists() {
         eprintln!("runner.py not found at {:?}!", runner_py);
     }

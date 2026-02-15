@@ -15,8 +15,10 @@ INIT=minao
 EXTRACMD="--use-svd --use-local-frame --grid-level 2 --task-id -1 --task-count -1 --evaluate-force --add-delta-at-init"
 
 # run M-OFDFT
+echo ">>> setting micromamba environment"
+bash ./scratch/install.sh
 echo ">>> about to run eval_flexible.sh"
-bash scratch/eval_flexible.sh
+bash ./scratch/eval_flexible.sh
 echo ">>> finished eval_flexbile.sh, exit=$?"
 
 path=$OUTPUT_ROOT/total.csv
