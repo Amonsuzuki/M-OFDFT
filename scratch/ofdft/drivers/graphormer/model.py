@@ -9,7 +9,6 @@ import argparse
 
 def softmax_dropout(input, dropout_prob: float, is_training: bool):
     return F.dropout(F.softmax(input, -1), dropout_prob, is_training)
-
 class Scalarizer(nn.Module):
     def __init__(self, init_scale=0.1, shrunk=False, coeff_dim=207, outer_scale=10):
         super().__init__()
@@ -62,6 +61,76 @@ class RBF(nn.Module):
         nn.init.uniform_(self.means, 0.1, 10)
         nn.init.constant_(self.bias.weight, 0)
         nn.init.constant_(self.mul.weight, 0)
+
+class GaussianLayer(nn.Module):
+    def __init__(self, K=128, edge_types=1024):
+        super().__init__()
+        self.K = K
+        self.means = nn.Embedding(1, K)
+        self.stds = nn.Embedding(1, K)
+        self.mul = nn.Embedding(edge_types, 1)
+        self.bias = nn.Embedding(edge_types, 1)
+        nn.init.uniform_(self.means.weight, 0, 3)
+        nn.init.uniform_(self.stds.weight, 0, 3)
+        nn.init.constant_(self.bias.weight, 0)
+        nn.init.constant_(self.mul.weight, 1)
+
+class SelfMultiheadAttention(nn.Module):
+    def __init__(
+            self,
+            embed_dim,
+            num_heads,
+            dropout=0.0,
+            bias=True,
+            scaling_factor=1,
+            ):
+        super().__init__()
+        self.embed_dim = embed_dim
+
+        self.num_heads = num_heads
+        self.dropout = dropout
+
+        self.head_dim = embed_dim // num_heads
+        assert (
+                self.head_dim * num_heads == self.embed_dim
+                ), "embed_dim must be divisible by num_heads"
+        self.scaling = (self.head_dim * scaling_factor) ** -0.5
+
+        self.in_proj: Callable[[Tensor], Tensor] = nn.Linear(
+                embed_dim, embed_dim * 3, bias=bias
+                )
+        self.out_proj = nn.Linear(embed_dim, embed_dim, bias=bias)
+
+class Graphormer3DEncoderLayer(nn.Module):
+    def __init__(
+            self,
+            embedding_dim: int = 768,
+            ffn_embedding_dim: int = 3072,
+            num_attention_heads: int = 8,
+            dropout: float = 0.1,
+            attention_dropout: float = 0.1,
+            activation_dropout: float = 0.1,
+            ) -> None:
+        super().__init__()
+
+        # Initialize parameters
+        self.embedding_dim = embedding_dim
+        self.num_attention_heads = num_attention_heads
+        self.attention_dropout = attention_dropout
+
+        self.dropout = dropout
+        self.activation_dropout = activation_dropout
+
+        self.self_attn = SelfMultiheadAttention(
+                self.embedding_dim,
+                num_attention_heads,
+                dropout=attention_dropout,
+                )
+        self.self_attn_layer_norm = nn.LayerNorm(self.embedding_dim)
+        self.fc1 = nn.Linear(self.embedding_dim, ffn_embedding_dim)
+        self.fc2 = nn.Linear(ffn_embedding_dim, self.embedding_dim)
+        self.final_layer_norm = nn.LayerNorm(self.embedding_dim)
+
 
 
 class Graphormer3D(nn.Module):
@@ -189,7 +258,9 @@ class Graphormer3D(nn.Module):
     """
 
     @classmethod
-    def build_model()
+    def build_model():
+        base_architecture(args)
+        return cls(args)
 
     def __init__(self, args):
         # init nn.Module
@@ -206,7 +277,7 @@ class Graphormer3D(nn.Module):
         self.shrunk = self.args.shrunk
         self.coeff_dim = self.args.coeff_dim
         self.encoder_type = self.args.coeff_encoder_type
-        if self.encoder_type = 'mlp':
+        if self.encoder_type == 'mlp':
             # args to variable
             outer_scale = self.args.outer_scale
             # if init_scale == 0, return the original value
@@ -244,20 +315,21 @@ class Graphormer3D(nn.Module):
         # argument is Tensor, return value is Tensor
         self.final_ln: Callable[[Tensor], Tensor] = nn.LayerNorm(self.args.embed_dim)
 
-        self.energy_proj: Callable[[Tensor], Tensor] = NonLinear(
+        # energy typo?
+        self.engergy_proj: Callable[[Tensor], Tensor] = NonLinear(
                 self.args.embed_dim, 1
                 )
         self.ground_energy_proj: Callable[[Tensor], Tensor] = NonLinear(
                 self.args.embed_dim, 1
                 )
         self.coeff_offset_proj: Callable[[Tensor], Tensor] = NonLinear(
-                seld.args.emebed_dim, self.coeff_dim
+                self.args.embed_dim, self.coeff_dim
                 )
 
         K = self.args.num_kernel
-        if self.args_kernel_type == 'rbf':
+        if self.args.kernel_type == 'rbf':
             self.dist_encoder = RBF(K, self.edge_types)
-        elif self.args.kernel_tyoe == 'gbf':
+        elif self.args.kernel_type == 'gbf':
             self.dist_encoder = GaussianLayer(K, self.edge_types)
         else:
             raise NotImplementedError()
@@ -277,7 +349,8 @@ class Graphormer3D(nn.Module):
 
 
 def load_model(model_ckpt_path, use_ema=False):
-    ckpt = torch.load(model_ckpt_path, map_location='cpu')
+    # weights_only, torch.__version__ > 2.6
+    ckpt = torch.load(model_ckpt_path, map_location='cpu', weights_only=False)
     # ckpt['cfg']['model'] == args?
     model = Graphormer3D(ckpt['cfg']['model'])
     if use_ema:

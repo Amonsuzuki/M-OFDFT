@@ -12,4 +12,6 @@ tmp*
 
 **/target/
 **/data/
+data.tar.gz
 *pt
+**/ckpts/

@@ -77,3 +77,23 @@ class OFDFT(BaseOFDFT):
         return self.grid_all_auxao_values()
 
 
+class BackwardableOFDFT(BaseOFDFT):
+    def __init__(
+            self,
+            *args,
+            grid_coords, grid_weights,
+            grid_slice_size=32768, grid_type='basic',
+            **kwargs
+            ):
+        super().__init__(*args, **kwargs)
+        if not self.tsbase_fn.is_empty or not self.xc_fn.is_empty:
+            assert grid_type in ['basic', 'lazy']
+            if grid_type == 'basic':
+                self.grif = BasicGridValueProvider(self.auxmol, grid_coords, grid_weights, grid_slice_size)
+            elif grid_type == 'lazy':
+                self.grid = LazyGridValueProvider(self.auxmol, grid_coords, grid_weights, grid_slice_size)
+    def compute_j(self, coeffs: torch.Tensor):
+        return compute_coulumb(coeffs, self.auxao_2c2e)
+
+    def compute_vect(self, coeffs: torch.Tensor):
+        return compute_vext(coeffs, self.auxao_1c1e_nuc)
