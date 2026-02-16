@@ -45,16 +45,16 @@ def parse_args():
     parser.add_argument('--use-svd', action='store_true')
     parser.add_argument('--use-local-frame', action='store_true')
     parser.add_argument('--add-delta-at-init', action='store_true')
-    parser.add_argument('--add-delta-interval', type=int, defalut=0)
+    parser.add_argument('--add-delta-interval', type=int, default=0)
     parser.add_argument('--grid-level', type=int)
-    parser.add_argument('--grid-type', type=str, defalut='basic', choices=['basic', 'lazy', 'disk_lazy'])
+    parser.add_argument('--grid-type', type=str, default='basic', choices=['basic', 'lazy', 'disk_lazy'])
     parser.add_argument('--grid-slice-size', type=int, default=32768)
     parser.add_argument('--save-coeff-interval', type=int, default=0)
     parser.add_argument('--compute-init-energy', action='store_true')
     parser.add_argument('--quiet', action='store_true')
-    parser.add_argument('--init-delta-ratio', type=float, defalut=1)
+    parser.add_argument('--init-delta-ratio', type=float, default=1)
     parser.add_argument('--coeff-dim', type=int, default=477)
-    parser.add_argument('--ts-func', type=str, defalut='APBE', choices=['APBE', 'TF', 'TFVW', 'TFVW1.1'])
+    parser.add_argument('--ts-func', type=str, default='APBE', choices=['APBE', 'TF', 'TFVW', 'TFVW1.1'])
     parser.add_argument('--use-frad-momentum', action='store_true')
     parser.add_argument('--grad-momentum-lambda', type=float, default=0.5)
 
@@ -63,7 +63,7 @@ def parse_args():
     args.ngpu = args.ngpu or int(os.getenv('NGPU', -1))
     args.nworker = args.nworker or int(os.getenv('NWORKER', -1)) or args.ngpu
 
-    print(f'NGPU: {args.ngpu}, NWORKER: {args:nworker}')
+    print(f'NGPU: {args.ngpu}, NWORKER: {args.nworker}')
 
     if args.ngpu == -1 or args.nworker == -1:
         print('Please set ngpu and nworker through command line or env variable!')
@@ -108,7 +108,7 @@ def get_tasks(args):
     return tasks
 
 def load_model(args, device):
-    if args.model_type == 'graphomer':
+    if args.model_type == 'graphormer':
         from scratch.ofdft.drivers.graphormer import load_model
         model = load_model(args.ckpt_path, use_ema=args.use_ema)
     elif args.model_type == 'ofdft':
@@ -158,8 +158,10 @@ def get_init_coeff_and_energy(args, mol, auxmol):
 def get_tsbase_and_xc_and_forward_spec(args):
     import scratch.ofdft.functionals
     if args.prediction_type == 'Ts':
+        # return ts, xc functional
         tsbase = scratch.ofdft.functionals.build_tsxc({'ZERO': 1.0})
         xc = scratch.ofdft.functionals.build_tsxc(XC_C)
+        # xc, correration of xc, coulomb potential, external potential
         forward_spec = ['xc', 'corr', 'j', 'vext']
     elif args.prediction_type == 'Ts_res':
         if args.ts_func == 'APBE':

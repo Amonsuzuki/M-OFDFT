@@ -34,7 +34,7 @@ mm run -n "${ENV_NAME}" python -m pip install \
 mm run -n "${ENV_NAME}" python -m pip install \
 	"torch-sparse==0.6.12" -f https://pytorch-geometric.com/whl/torch-1.9.1+cu111.html
 mm run -n "${ENV_NAME}" python -m pip install \
-	"torch-geometric==1.7,2"
+	"torch-geometric==1.7.2"
 mm run -n "${ENV_NAME}" python -m pip install \
 	"torch-cluster==1.5.9" -f https://data.pyg.org/whl/torch-1.9.1+cu111.html
 

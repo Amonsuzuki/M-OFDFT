@@ -215,6 +215,9 @@ async fn start_run(State(st): State<AppState>, Json(req): Json<RunRequest>) -> R
     cmd.stdout(std::process::Stdio::piped());
     cmd.stderr(std::process::Stdio::piped());
 
+    // In order to understand importing module as dir
+    cmd.env("PYTHONPATH", root.to_string_lossy().to_string());
+
     record_and_send(
         &log,
         &tx,

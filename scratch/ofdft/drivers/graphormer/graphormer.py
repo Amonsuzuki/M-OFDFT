@@ -136,7 +136,7 @@ class GraphormerOFDFTDriver(BaseOFDFTDriver):
         # get coordinates of molecule, (n_atoms, 3)
         pos = self.mol.atom_coords().astype(float)
         # (n) to (1, n, 1)
-        x = x[np,.newaxis, ..., np.newaxis]
+        x = x[np.newaxis, ..., np.newaxis]
         # (n) to (1, n)
         pos = pos[np.newaxis]
         return x, pos

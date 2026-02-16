@@ -11,3 +11,5 @@ slurm
 tmp*
 
 **/target/
+**/data/
+*pt
