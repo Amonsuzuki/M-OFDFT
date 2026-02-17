@@ -528,7 +528,7 @@ class Graphormer3D(nn.Module):
 
         # predict energy for current SCF step
         eng_output = (
-                self.energy_proj(final_output)
+                self.engergy_proj(final_output)
                 ).flatten(-2)
         eng_output = eng_output * (~padding_mask)
         eng_output = eng_output.sum(dim=-1)
