@@ -478,10 +478,10 @@ class Graphormer3D(nn.Module):
         else:
             node_features = self.coeff_encoder(node_features, padding_mask)
 
-        graph_node_features = (
+        graph_node_feature = (
                 node_features
                 + self.atom_encoder(atoms.squeeze(-1))
-                + self.edge_proj(edge_features.sum(dim=-1))
+                + self.edge_proj(edge_features.sum(dim=-2))
                 )
         # Main model
         output = F.dropout(
