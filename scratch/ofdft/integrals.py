@@ -2,6 +2,9 @@ import warnings
 from functools import lru_cache
 import pyscf
 
+# See: CINTcommon_fac_sp in https://github.com/sunqm/libcint/blob/master/src/g1e.c 
+S_ORBITAL_COMMON_FACTOR = 0.282094791773878143
+
 @lru_cache(16)
 def build_1c1e_helper_mol(mol):
     # Build a helper mol with an invalid basis
