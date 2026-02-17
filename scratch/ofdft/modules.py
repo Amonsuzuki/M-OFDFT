@@ -121,5 +121,89 @@ class BackwardableOFDFT(BaseOFDFT):
     def compute_j(self, coeffs: torch.Tensor):
         return compute_coulumb(coeffs, self.auxao_2c2e)
 
-    def compute_vect(self, coeffs: torch.Tensor):
+    def compute_vext(self, coeffs: torch.Tensor):
         return compute_vext(coeffs, self.auxao_1c1e_nuc)
+
+    def compute_tsbase(self, auxao_value: torch.Tensor, grid_weights: torch.Tensor, coeffs: torch.Tensor):
+        rho = auxao_value @ coeffs
+        d = DensityVars(rho, coeffs)
+        tsxc, _ = self.tsbase_fn(d, grid_weights)
+        return tsxc
+
+    def compute_xc(self, auxao_value: torch.Tensor, grid_weights: torch.Tensor, coeffs: torch.Tensor):
+        rho = auxao_value @ coeffs
+        d = DensityVars(rho, coeffs)
+        tsxc, _ = self.xc_fn(d, grid_weights)
+        return tsxc
+
+    def compute_corr(self, coeffs: torch.Tensor):
+        data = self.preprocess_fn(coeffs)
+        correction = self.correction_fn(data)
+        return correction
+
+    def evaluate_energy(self, coeffs, energy_func, backward=False):
+        if isinstance(coeffs, torch.Tensor):
+            pass
+        else:
+            coeffs = coeffs()
+        e = energy_func(coeffs)
+        if backward:
+            e.backward()
+            e = e.detach()
+        return e
+
+    def evaluate_energy_grid(self, coeffs, energy_func, backward=False):
+        es = []
+        for islice in range(self.grid.nslice):
+            auxao = self.grid.auxao(islice).to(self.auxao_2c2e.device)
+            gw = self.grid.weights(islice).to(self.auxao_2c2e.device)
+            e = self.evaluate_energy(coeffs, lambda c: energy_func(auxao, gw, c), backward)
+            es.append(e)
+            del auxao
+            del gw
+        total_e = sum(es)
+        return total_e
+
+    def evaluate(
+            self,
+            coeffs: Union[torch.Tensor, Callable[[], torch.Tensor]],
+            backward=False,
+            forward_parts=None,
+            backward_parts=None
+            ):
+        should_forward = lambda n: forward_parts is None or n in forward_parts
+        should_backward = lambda n: backward and (backward_parts is None or n in backward_parts)
+
+        if should_forward('j'):
+            j = self.evaluate_energy(coeffs, self.compute_j, backward=should_backward('j'))
+        else:
+            j = torch.tensor(0.0).to(self.auxao_2c2e)
+
+        if should_forward('xc') and not self.xc_fn.is_empty:
+            xc = self.evaluate_energy_grid(coeffs, self.compute_xc, backward=should_backward('xc'))
+        else:
+            xc = torch.tensor(0.0).to(j)
+        
+        if should_forward('tsbase') and not self.tsbase_fn.is_empty:
+            tsbase = self.evaluate_energy_grid(coeffs, self.compute_tsbase, backward=should_backward('tsbase'))
+        else:
+            tsbase = torch.tensor(0.0).to(j)
+
+        if should_forward('vext'):
+            vext = self.evaluate_energy(coeffs, self.compute_vext, backward=should_backward('vext'))
+        else:
+            vext = torch.tensor(0.0).to(j)
+
+        if should_forward('corr'):
+            correction = self.evaluate_energy(coeffs, self.compute_corr, backward=should_backward('corr'))
+        else:
+            correction = torch.tensor(0.0).to(j)
+
+        terms = {'vext': vext, 'j': j, 'tsbase': tsbase, 'xc': xc, 'corr': correction}
+        e_tot = vext + j + tsbase + xc + correction
+        loss = e_tot
+        return loss, terms, None
+
+
+    def forward_and_backward(self, coeff: Callable[[], torch.Tensor], forward_parts=None, backward_parts=None):
+        return self.evaluate(coeffs, backward=True, forward_parts=forward_parts, backward_parts=backward_parts)
