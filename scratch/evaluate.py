@@ -222,7 +222,7 @@ def worker(args, device, model, taskid):
     tsbase, xc, forward_spec = get_tsbase_and_xc_and_forward_spec(args)
 
     # set driver to handle ML model and OFDFT reference 
-    if args.model_type == 'graphorer':
+    if args.model_type == 'graphormer':
         from scratch.ofdft.drivers.graphormer import GraphormerOFDFTDriver
         driver = GraphormerOFDFTDriver(
                 mol,
