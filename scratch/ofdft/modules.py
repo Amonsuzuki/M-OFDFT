@@ -35,6 +35,24 @@ class BasicGridValueProvider(nn.Module):
             self.auxao_values = nn.Parameter(auxao_values, requires_grad=False)
             self.grid_weights = nn.Parameter(grid_weights, requires_grad=False)
 
+    def auxao(self, slice_idx=None):
+        if self.sliced:
+            return self.auxao_values[slice_idx]
+        else:
+            return self.auxao_values
+
+    def weights(self, slice_idx=None):
+        if self.sliced:
+            return self.grid_weights[slice_idx]
+        else:
+            return self.grid_weights
+
+    def all_auxao_values(self):
+        if self.sliced:
+            return torch.cat([t[0].detach().cpu() for t in self.auxao_values], dim=0)
+        else:
+            return self.auxao_values[0].detach().cpu()
+
 class BaseOFDFT(nn.Module):
     def __init__(
             self,
