@@ -55,7 +55,7 @@ def parse_args():
     parser.add_argument('--init-delta-ratio', type=float, default=1)
     parser.add_argument('--coeff-dim', type=int, default=477)
     parser.add_argument('--ts-func', type=str, default='APBE', choices=['APBE', 'TF', 'TFVW', 'TFVW1.1'])
-    parser.add_argument('--use-frad-momentum', action='store_true')
+    parser.add_argument('--use-grad-momentum', action='store_true')
     parser.add_argument('--grad-momentum-lambda', type=float, default=0.5)
 
     args = parser.parse_args()
