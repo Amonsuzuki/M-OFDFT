@@ -110,7 +110,7 @@ class GraphormerOFDFTDriver(BaseOFDFTDriver):
             # relative (global) rotations
             self.relrots = make_param(scratch.ofdft.utils.rotations.get_relative_rotations(rot_tensors))
             # d matric feature?
-            self.edge_rot_D = make_param(scratch.ofdft.utils.roations.build_Dmatrix_features(self.relorts, max_order=2)[None, ...])
+            self.edge_rot_D = make_param(scratch.ofdft.utils.rotations.build_Dmatrix_features(self.relorts, max_order=2)[None, ...])
 
         # singular value decomposition of overlap matrix
         self.use_svd_space = use_svd_space
