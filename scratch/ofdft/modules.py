@@ -9,6 +9,31 @@ import pyscf
 from scratch.ofdft.functionals import *
 from scratch.ofdft.integrals import *
 
+class BasicGridValueProvider(nn.Module):
+    def __init__(self, auxmol, grid_coords, grid_weights, slice_size=None):
+        super().__init__()
+        self.auxmol = auxmol
+        self.sliced = slice_size is not None
+        auxao_values = pyscf.dft.numint.eval_ao(self.auxmol, grid_coords, deriv=1)
+        auxao_values = torch.tensor(auxao_values)
+        grid_weights = torch.tensor(grid_weights)
+        if self.sliced:
+            self.nslice = math.ceil(grid_weights.shape[0] / slice_size)
+            self.auxao_values = nn.ParameterList(
+                    nn.Parameter(t, requires_grad=False)
+                    for t in auxao_values.split(slice_size, dim=1)
+                    )
+            self.grid_weights = nn.ParameterList(
+                    nn.Parameter(t, requires_grad=False)
+                    for t in grid_weights.split(slice_size, dim=0)
+                    )
+            assert len(self.auxao_values) == len(self.grid_weights)
+            assert self.nslice == len(self.auxao_values)
+
+        else:
+            self.auxao_values = nn.Parameter(auxao_values, requires_grad=False)
+            self.grid_weights = nn.Parameter(grid_weights, requires_grad=False)
+
 class BaseOFDFT(nn.Module):
     def __init__(
             self,
@@ -89,7 +114,7 @@ class BackwardableOFDFT(BaseOFDFT):
         if not self.tsbase_fn.is_empty or not self.xc_fn.is_empty:
             assert grid_type in ['basic', 'lazy']
             if grid_type == 'basic':
-                self.grif = BasicGridValueProvider(self.auxmol, grid_coords, grid_weights, grid_slice_size)
+                self.grid = BasicGridValueProvider(self.auxmol, grid_coords, grid_weights, grid_slice_size)
             elif grid_type == 'lazy':
                 self.grid = LazyGridValueProvider(self.auxmol, grid_coords, grid_weights, grid_slice_size)
     def compute_j(self, coeffs: torch.Tensor):
