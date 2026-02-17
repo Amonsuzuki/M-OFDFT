@@ -219,7 +219,7 @@ class GraphormerOFDFTDriver(BaseOFDFTDriver):
             if coeff is None:
                 coeff = self.coeff_for_input
             # get model_input and coefficients
-            moldel_input, coeff = self.preprocess_fn(coeff)
+            model_input, coeff = self.preprocess_fn(coeff)
             # predict delta_coeff
             delta_coeff = self.model(model_input)[2][0]
             delta_coeff = delta_coeff * self.delta_coeff_std + self.delta_coeff_mean
