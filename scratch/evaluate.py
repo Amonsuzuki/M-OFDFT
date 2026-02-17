@@ -380,7 +380,7 @@ def worker(args, device, model, taskid):
             'count(rho < 0)': rho_le0,
             'projected gradnorm': total_grad_norm,
             'mar(rho)': rho_mae,
-            'weighted ae(rho)': rho_ar_weighted_sum,
+            'weighted ae(rho)': rho_ae_weighted_sum,
             'mae(coeff)': coeff_mae,
             'density loss': density_loss,
             'mae(HF force)': hf_force_mae,
