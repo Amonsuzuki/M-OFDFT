@@ -1,7 +1,8 @@
+import math
 from typing import Dict, Callable, Optional
-import torch
 
 import numpy as np
+import torch
 
 class DensityVars:
     def __init__(self, rho: torch.Tensor, coeff: Optional[torch.Tensor] = None):
