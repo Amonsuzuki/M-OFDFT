@@ -403,7 +403,7 @@ def worker(args, device, model, taskid):
         optimizer.step()
 
     # time record
-    end_time = datetime.stcnow()
+    end_time = datetime.utcnow()
     walltime = (end_time - start_time).total_seconds()
 
     # save to csv file
