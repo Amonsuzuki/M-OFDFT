@@ -438,7 +438,7 @@ def worker(args, device, model, taskid):
         hf_force_mae_1st_deltae_min = stats_df.iloc[delta_e_local_minima[0]]['mae(HF force)']
     else:
         etot_1st_delta_min = None
-        hf_force_mae_1st_delta_min = None
+        hf_force_mae_1st_deltae_min = None
     # the minimum etot and hf force mae
     etot_argmin_deltae = stats_df.iloc[delta_e_min_step]['loss']
     hf_force_mae_argmin_deltae = stats_df.iloc[delta_e_min_step]['mae(HF force)']
@@ -509,7 +509,7 @@ def worker(args, device, model, taskid):
             'HF-force-mae(FIRST)': stats_df.iloc[0]['mae(HF force)'],
             'HF-force-mae(LAST)': stats_df.iloc[-1]['mae(HF force)'],
             'HG-force-mae(FIRST PROJGRAD LOCAL MINIMA)': hf_force_mae_1st_projgrad_min,
-            'HG-force-mae(FIRST DELTA-E LOCAL MINIMA)': hf_force_mae_1st_delta_min,
+            'HG-force-mae(FIRST DELTA-E LOCAL MINIMA)': hf_force_mae_1st_deltae_min,
             'HF-force-mae(ARGMIN DELTA-E)': hf_force_mae_argmin_deltae,
             'HF-force-mae(ARGMIN EMA-DELTA-E)': hf_force_mae_argmin_emadeltae,
             'HF-force-mae(BEST LOSS)': stats_df.iloc[best_e_step]['mae(HF force)'],
