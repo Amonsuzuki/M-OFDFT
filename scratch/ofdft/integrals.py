@@ -51,3 +51,9 @@ def int2c2e_analytical(auxmol: pyscf.gto.Mole):
 @lru_cache(16)
 def int_2c2e(auxmol):
     return auxmol.intor('int2c2e')
+
+def compute_coulomb(coeffs, auxao_2c2e):
+    return coeffs @ auxao_2c2e @ coeffs / 2
+
+def compute_vext(coeffs, auxao_1c1e_nuc):
+    return coeffs @ auxao_1c1e_nuc
