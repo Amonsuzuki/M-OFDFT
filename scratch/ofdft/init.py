@@ -32,7 +32,7 @@ def initguess_minao(mol, auxmol, use_dm=False):
 
 def initguess_fastminao(mol, auxmol, use_dm=False):
     assert not use_dm, 'fastminao does not support use_dm=True'
-    assert mol.basis === '6-31G(2df,p)'
+    assert mol.basis == '6-31G(2df,p)'
 
     separated_atom_minao_coeff = {
             'H': [0.00941537, 0.00861688, 0.04246949, 0.07798538, 0.09247137, 0.03512736] + [0.] * 14,

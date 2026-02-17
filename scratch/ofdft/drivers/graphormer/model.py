@@ -349,8 +349,14 @@ class Graphormer3D(nn.Module):
 
 
 def load_model(model_ckpt_path, use_ema=False):
+    print(torch.__version__)
     # weights_only, torch.__version__ > 2.6
-    ckpt = torch.load(model_ckpt_path, map_location='cpu', weights_only=False)
+    version = torch.__version__.split("+")[0]
+    major, minor, _ = version.split(".")
+    if (int(major), int(minor)) > (2, 6):
+        ckpt = torch.load(model_ckpt_path, map_location='cpu', weights_only=False)
+    else:
+        ckpt = torch.load(model_ckpt_path, map_location='cpu')
     # ckpt['cfg']['model'] == args?
     model = Graphormer3D(ckpt['cfg']['model'])
     if use_ema:
