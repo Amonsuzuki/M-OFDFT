@@ -18,7 +18,7 @@ def parse_spec_str(spec_str):
     # parse spec string
     spec_parts = spec_str.split(':')
     if len(spec_parts) == 4:
-        molecule_type, energy_option, coeff_option, reparam_version = sprc_parts
+        molecule_type, energy_option, coeff_option, reparam_version = spec_parts
         init_method = 'minao'
     elif len(spec_parts) == 5:
         molecula_type, energy_option, coeff_option, reparam_version, init_method = spec_parts
