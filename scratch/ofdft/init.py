@@ -88,7 +88,7 @@ def get_init_coeff(init_method, mol, auxmol, *args, use_dm=False, **kwargs):
             'gt': init_gt,
             'halfgt': init_halfgt,
             }
-    method = methods[init_nethod]
+    method = methods[init_method]
     return method(mol, auxmol, *args, use_dm=use_dm, **kwargs)
 
 def ref_etb(mol, beta):
