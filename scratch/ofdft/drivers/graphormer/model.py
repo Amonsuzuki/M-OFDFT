@@ -380,7 +380,7 @@ class Graphormer3D(nn.Module):
                 )
         # Main model
         output = F.dropout(
-                graph_node_feature, p=self.input_dropout traning=self.traning
+                graph_node_feature, p=self.input_dropout, traning=self.traning
                 )
         output = output.transpose(0, 1).contiguous()
 
