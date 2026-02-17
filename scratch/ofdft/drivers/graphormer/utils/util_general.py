@@ -33,9 +33,9 @@ grad_mean.update(ethanol_pbe_grad_mean)
 grad_std = {}
 
 reparam_factors = {}
-reparam_factors.update(qmugs_pbe_reparam_factors)
-reparam_factors.update(chignolin_filter500_pbe_reparam_factors)
-reparam_factors.update(ethanol_pbe_reparam_factors)
+reparam_factors.update(qmugs_pbe_reparams)
+reparam_factors.update(chignolin_filter500_pbe_reparams)
+reparam_factors.update(ethanol_pbe_reparams)
 
 delta_coeff_mean = {}
 delta_coeff_mean.update(qmugs_pbe_delta_coeff_mean)
