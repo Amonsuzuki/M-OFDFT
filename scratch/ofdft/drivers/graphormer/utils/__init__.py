@@ -30,7 +30,7 @@ def parse_spec_str(spec_str):
     spec.molecule_type = molecule_type
     # set atomref as bool
     if energy_option.endswith('[atomref]'):
-        spec.energy_option = energy_option.replce('[atomref]', '')
+        spec.energy_option = energy_option.replace('[atomref]', '')
         spec.use_atomref = True
     else:
         spec.energy_option = energy_option
