@@ -20,7 +20,7 @@ def e3nn_change_of_coord_D(mol):
         [1., 0., 0.],
         [0., 1., 0.],
         ])
-    ireep = o3.Irreps(
+    irreps = o3.Irreps(
             '+'.join( f'{l}e' for l in map(mol.bas_angular, range(mol.nbas)))
             )
     return irreps.D_from_matrix(cod)
