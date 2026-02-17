@@ -537,7 +537,7 @@ class Graphormer3D(nn.Module):
         ground_eng_output = (
                 self.ground_energy_proj(final_output)
                 ).flatten(-2)
-        ground_eng_output = ground_eng_output * (~paddning_mask)
+        ground_eng_output = ground_eng_output * (~padding_mask)
         ground_eng_output = ground_eng_output.sum(dim=-1)
 
         # predict delta coefficients
