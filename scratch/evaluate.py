@@ -328,7 +328,7 @@ def worker(args, device, model, taskid):
         loss_py = loss.item()
 
         # decay the gradient regularly
-        if args.add_delta_intercal > 0 and i > 0 and i % args.add_delta_intercal == 0:
+        if args.add_delta_interval > 0 and i > 0 and i % args.add_delta_interval == 0:
             print('will recycle add_delta...')
             driver.var.grad = driver.predict_delta_coeff(project=False) / args.lr * decay_delta_coeff
             decay_delta_coeff *= 0.8
