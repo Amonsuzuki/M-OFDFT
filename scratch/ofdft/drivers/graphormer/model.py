@@ -408,7 +408,7 @@ class Graphormer3D(nn.Module):
         # predict ground energy
         ground_eng_output = (
                 self.ground_energy_proj(final_output)
-                ).flatten(02)
+                ).flatten(-2)
         ground_eng_output = ground_eng_output * (~paddning_mask)
         ground_eng_output = ground_eng_output.sum(dim=-1)
 
