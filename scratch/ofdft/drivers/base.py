@@ -35,7 +35,7 @@ class BaseOFDFTDriver(nn.Module):
                 self.xc_fn,
                 self.correction_fn,
                 grid_coords=self.grid.coords if self.grid is not None else None,
-                grid_weights=self.grid_weights if self.grid is not None else None,
+                grid_weights=self.grid.weights if self.grid is not None else None,
                 grid_type=grid_type,
                 grid_slice_size=grid_slice_size,
                 )
