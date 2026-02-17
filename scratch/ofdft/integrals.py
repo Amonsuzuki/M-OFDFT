@@ -35,7 +35,7 @@ def int1c1e_int_analytical(auxmol: pyscf.gto.Mole):
 def int1c1e_nuc_analytical(auxmol: pyscf.gto.Mole):
     helper_mol = build_1c1e_helper_mol(auxmol)
     intor = pyscf.gto.mole.intor_cross('int1e_nuc', helper_mol, auxmol)
-    inx = [
+    idx = [
             auxmol.bas_atom(ibas)
             for ibas in range(auxmol.nbas) for _ in range(auxmol.bas_angular(ibas) * 2 + 1)
             ]
