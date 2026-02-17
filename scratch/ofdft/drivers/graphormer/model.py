@@ -251,7 +251,7 @@ class Graphormer3DEncoderLayer(nn.Module):
             attn_bias: Tensor = None,
             ):
         residual = x
-        x = self.self.attn_layer_norm(x)
+        x = self.self_attn_layer_norm(x)
         x = self.self_attn(
                 query=x,
                 attn_bias=attn_bias,
