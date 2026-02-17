@@ -3,6 +3,8 @@ import numpy as np
 import pyscf
 import pyscf.df
 
+from ofdft.integrals import int_2c2e
+
 def compute_jaux(mol, auxmol, dm):
     ti = np.tril_indices(mol.nao)
     tw = (np.ones(mol.nao) * 2 - np.eye(mol.nao))[ti]

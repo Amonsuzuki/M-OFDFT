@@ -7,3 +7,7 @@ def int1c1e_int_analytical(auxmol: pyscf.gto.Mole):
     intor = pyscf.gto.mole.intor_cross('int1e_ovlp', helper_mol, auxmol)
     intor = intor[0]
     return intor
+
+@lru_cache(16)
+def int_2c2e(auxmol):
+    return auxmol.intor('int2c2e')
