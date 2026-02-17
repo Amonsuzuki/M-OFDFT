@@ -417,7 +417,7 @@ def worker(args, device, model, taskid):
     # get 1st projected grad minimum energy total and force mae
     # local minima is x[i - 1] > x[i] && x[i] < x[i + 1]
     from scipy.signal import argrelextrema
-    gradnorm_local_minima = argrelextrema(stats_df['projected_gradnorm'].to_numpy(), np.less)[0]
+    gradnorm_local_minima = argrelextrema(stats_df['projected gradnorm'].to_numpy(), np.less)[0]
     if len(gradnorm_local_minima) > 0:
         etot_1st_projgrad_min = stats_df.iloc[gradnorm_local_minima[0]]['loss']
         hf_force_mae_1st_projgrad_min = stats_df.iloc[gradnorm_local_minima[0]]['mae(HF force)']
