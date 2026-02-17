@@ -47,6 +47,12 @@ def get_energy_mean(spec):
     else:
         return energy_mean[spec.molecule_type][spec.init_method][spec.energy_option]
 
+def get_energy_std(spec):
+    if spec.use_atomref:
+        return energy_std[spec.molecule_type][spec.init_method][spec.energy_option+'_ref'][spec.coeff_option]
+    else:
+        return energy_std[spec.molecule_type][spec.init_method][spec.energy_option]
+
 def get_energy_mean(spec):
     if spec.use_atomref:
         return energy_std[spec.molecule_type][spec.init_method][spec.energy_option+'_ref'][spec.coeff_option]
