@@ -1,6 +1,7 @@
 import pyscf
 import pyscf.grad
 import functools
+import numpy as np
 
 from ofdft.integrals import build_1c1e_helper_mol
 
