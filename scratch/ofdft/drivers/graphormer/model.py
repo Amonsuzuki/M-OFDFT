@@ -159,7 +159,7 @@ class GaussianLayer(nn.Module):
         nn.init.constant_(self.mul.weight, 1)
 
     def forward(self, x, edge_types):
-        mul = self.nul(edge_types)
+        mul = self.mul(edge_types)
         bias = self.bias(edge_types)
         x = mul * x.unsqueeze(-1) + bias
         x = x.expand(-1, -1, -1, self.K)
