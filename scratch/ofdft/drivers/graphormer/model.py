@@ -9,6 +9,7 @@ import argparse
 
 def softmax_dropout(input, dropout_prob: float, is_training: bool):
     return F.dropout(F.softmax(input, -1), dropout_prob, is_training)
+
 class Scalarizer(nn.Module):
     def __init__(self, init_scale=0.1, shrunk=False, coeff_dim=207, outer_scale=10):
         super().__init__()
@@ -20,6 +21,16 @@ class Scalarizer(nn.Module):
         self.register_parameter("outer_factor", nn.Parameter(outer_factor))
         self.shrunk = shrunk
 
+    def forward(self, coeff):
+        '''
+        coeff: B, N, 207
+        scalar_coeff: 1, 1, 207
+        '''
+        if self.shrunk:
+            return torch.tanh(coeff * self.inner_factor.reshape(1, 1, -1)) * self.outer_factor.reshape(1, 1, -1)
+        else:
+            return coeff * self.inner_factor.reshape(1, 1, -1)
+
 class NonLinear(nn.Module):
     def __init__(self, input, output_size, hidden=None):
         super().__init__()
@@ -27,6 +38,55 @@ class NonLinear(nn.Module):
             hidden = input
         self.layer1 = nn.Linear(input, hidden)
         self.layer2 = nn.Linear(hidden, output_size)
+
+    def forward(self, x):
+        x = F.gelu(self.layer1(x))
+        x = self.layer2(x)
+        return x
+
+class GradMultiply(torch.autograd.Function):
+    @staticmethod
+    def forward(ctx, x, scale):
+        ctx.scale = scale
+        res = x.new(x)
+        return res
+
+    @staticmethod
+    def backward(ctx, grad):
+        return grad * ctx.scale, None
+
+
+
+class GaussianMLP(nn.Module):
+    def __init__(self, input, hidden, alpha=40, learnable=False):
+        super().__init__()
+        self.input = input
+        self.hidden = hidden
+        self.layer1 = nn.Linear(input, hidden, bias=False)
+        self.layer2 = nn.Linear(input, hidden, bias=False)
+        self.register_parameter('alpha', nn.Parameter(torch.tensor([alpha]), requires_grad=learnable))
+        self.reset_parameters()
+
+    def reset_parameters(self):
+        torch.nn.init.trunc_normal_(self.layer1.weight, mean=0, std=1, a=-1, b=1)
+        torch.nn.init.trunc_normal_(self.layer2.weight, mean=0, std=1, a=-1, b=1)
+        self.layer1.weight = torch.nn.parameter.Parameter(self.layer1.weight / math.sqrt(self.input))
+        self.layer2.weight = torch.nn.parameter.Parameter(self.layer2.weight / math.sqrt(self.hidden))
+
+    def forward(self, coeff: Tensor, padding_mask: Tensor):
+        '''
+        coeff: [B, N, C]
+        sigma: [1,] -> [1, 1, 1]
+        '''
+        # RMSnorm
+        x = coeff / torch.sqrt(torch.mean(coeff ** 2, dim=-1, keepdim=True) + 1e-5)
+        x = self.layer1(x)
+        x = torch.exp(-self.alpha * x ** 2)
+        x = self.layer2(x)
+        x = x + coeff
+        x = x * (~padding_mask[:, :, None])
+        return x
+
 
 class GaussianEncoder(nn.Module):
     def __init__(self, input, hidden, output, hidden_layers=5, alpha=40, learnable=False, grad_rescale=0.1):
@@ -71,6 +131,20 @@ class RBF(nn.Module):
         nn.init.constant_(self.bias.weight, 0)
         nn.init.constant_(self.mul.weight, 0)
 
+    def forward(self, x: Tensor, edge_types):
+        mul = self.mul(edge_types)
+        bias = self.bias(edge_types)
+        x = mul * x.unsqueeze(-1) + bias
+        mean = self.means.float()
+        temp = self.temps.float().abs()
+        return ((x - mean).square() * (-temp)).exp().type_as(self.means)
+
+@torch.jit.script
+def gaussian(x, mean, std):
+    pi = 3.14159
+    a = (2*pi) ** 0.5
+    return torch.exp(-0.5 * (((x - mean) / std) ** 2)) / (a * std)
+
 class GaussianLayer(nn.Module):
     def __init__(self, K=128, edge_types=1024):
         super().__init__()
@@ -83,6 +157,15 @@ class GaussianLayer(nn.Module):
         nn.init.uniform_(self.stds.weight, 0, 3)
         nn.init.constant_(self.bias.weight, 0)
         nn.init.constant_(self.mul.weight, 1)
+
+    def forward(self, x, edge_types):
+        mul = self.nul(edge_types)
+        bias = self.bias(edge_types)
+        x = mul * x.unsqueeze(-1) + bias
+        x = x.expand(-1, -1, -1, self.K)
+        mean = self.means.weight.float().view(-1)
+        std = self.stds.weight.float().view(-1).abs() + 1e-5
+        return gaussian(x.float(), mean, std).type_as(self.means.weight)
 
 class SelfMultiheadAttention(nn.Module):
     def __init__(
@@ -109,6 +192,28 @@ class SelfMultiheadAttention(nn.Module):
                 embed_dim, embed_dim * 3, bias=bias
                 )
         self.out_proj = nn.Linear(embed_dim, embed_dim, bias=bias)
+
+    def forward(
+            self,
+            query: Tensor,
+            attn_bias: Tensor = None,
+            ) -> Tensor:
+        n_node, n_graph, embed_dim = query.size()
+        q, k, v = self.in_proj(query).chunk(3, dim=-1)
+
+        _shape = (-1, n_graph * self.num_heads, self.head_dim)
+        q = q.contiguous().view(_shape).transpose(0, 1) * self.scaling
+        k = k.contiguous().view(_shape).transpose(0, 1)
+        v = v.contiguous().view(_shape).transpose(0, 1)
+
+        attn_weights = torch.bmm(q, k.transpose(1, 2)) + attn_bias
+        attn_probs = softmax_dropout(attn_weights, self.dropout, self.training)
+
+        attn = torch.bmm(attn_probs, v)
+        attn = attn.transpose(0, 1).contiguous().view(n_node, n_graph, embed_dim)
+        attn = self.out_proj(attn)
+        return attn
+
 
 class Graphormer3DEncoderLayer(nn.Module):
     def __init__(
