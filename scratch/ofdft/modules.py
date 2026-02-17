@@ -14,7 +14,7 @@ class BaseOFDFT(nn.Module):
             self,
             mol: pyscf.gto.Mole,
             auxmol: pyscf.gto.Mole,
-            preprogress_fn: Callable[[torch.Tensor], Tuple[Dict, torch.Tensor]],
+            preprocess_fn: Callable[[torch.Tensor], Tuple[Dict, torch.Tensor]],
             tsbase_fn: Callable[[DensityVars, torch.Tensor], torch.Tensor],
             xc_fn: Callable[[DensityVars, torch.Tensor], torch.Tensor],
             correction_fn: Callable[[Dict], torch.Tensor],
