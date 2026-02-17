@@ -73,7 +73,7 @@ def get_rotations(mol):
         x = x / np.linalg.norm(x)
         y = y / np.linalg.norm(y)
         z = z / np.linalg.norm(z)
-        rots.append(np.array([x, y, z])
+        rots.append(np.array([x, y, z]))
     return rots
 
 def get_relative_rotations(per_atom_rotations):
