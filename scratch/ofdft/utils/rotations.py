@@ -5,7 +5,7 @@ from e3nn import o3
 def pyscf_to_standard_perm_D(mol):
     conversion = {
             0: torch.eye(1),
-            1: torch.eye([[0, 1, 0], [0, 0, 1], [1, 0, 0]]),
+            1: torch.tensor([[0, 1, 0], [0, 0, 1], [1, 0, 0]]),
             2: torch.eye(5),
             3: torch.eye(7),
             4: torch.eye(9),
