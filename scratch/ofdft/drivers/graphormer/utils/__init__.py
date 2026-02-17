@@ -27,7 +27,7 @@ def parse_spec_str(spec_str):
     # namespace enable dot access
     from argparse import Namespace
     spec = Namespace()
-    sprc.molecule_type = molecule_type
+    spec.molecule_type = molecule_type
     # set atomref as bool
     if energy_option.endswith('[atomref]'):
         spec.energy_option = energy_option.replce('[atomref]', '')
