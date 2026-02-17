@@ -291,7 +291,7 @@ def worker(args, device, model, taskid):
         force_nuc = torch.tensor(scratch.ofdft.grad.grad_nuc(auxmol)).to(device)
         force_ext_derivs = torch.stack([
             torch.tensor(t)
-            for t in scratch.ofdft.grad.extragrad_generator(auxmol)
+            for t in scratch.ofdft.grad.extgrad_generator(auxmol)
         ]).to(device)
         compute_hf_force = lambda c: force_ext_derivs @ c + force_nuc
         gt_hf_force = compute_hf_force(gt_coeff)
