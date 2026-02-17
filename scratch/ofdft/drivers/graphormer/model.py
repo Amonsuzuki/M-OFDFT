@@ -49,6 +49,15 @@ class GaussianEncoder(nn.Module):
         self.embed_layer.weight = torch.nn.parameter.Parameter(self.embed_layer.weight / math.sqrt(self.input))
         self.out_layer.weight = torch.nn.parameter.Parameter(self.out_layer.weight / math.sqrt(self.hidden))
 
+    def forward(self, coeff, padding_mask):
+        x = self.embed_layer(coeff)
+        x = GradMultiply.apply(x, 1 / self.grad_rescale)
+        for layer in self.gaussians:
+            x = layer(x, padding_mask)
+        x = GradMultiply.apply(x, self.grad_rescale)
+        out = self.out_layer(x) * (~padding_mask[:, :, None])
+        return out
+
 class RBF(nn.Module):
     def __init__(self, K, edge_types):
         super().__init__()
@@ -338,6 +347,78 @@ class Graphormer3D(nn.Module):
                 K, self.args.attention_heads
                 )
         self.edge_proj: Callable[[Tensor], Tensor] = nn.Linear(K, self.args.embed_dim)
+
+    def forward(self, batched_data):
+        atoms = batched_data["x"]
+        pos = batched_data['pos'].float()
+        node_attr = batched_data['node_attr']
+        padding_mask = ~batched_data['padding_mask']
+
+        n_graph, n_node = atoms.size()[:2]
+        delta_pos = pos.unsqueeze(1) - pos.unsqueeze(2)
+        dist: Tensor = delta_pos.norm(dim=-1) + 1e-5
+
+        edge_type = atoms.view(n_graph, n_node, 1) * self.atom_types + atoms.view(
+                n_graph, 1, n_node
+                )
+
+        dist_feature = self.dist_encoder(dist, edge_type)
+        edge_features = dist_feature.masked_fill(
+                padding_mask.unsqueeze(1).unsqueeze(-1), 0.0
+                )
+
+        node_features = self.scalarizer(node_attr)
+        if self.encoder_type == 'mlp':
+            node_features = self.coeff_encoder(node_features)
+        else:
+            node_features = self.coeff_encoder(node_features, padding_mask)
+
+        graph_node_features = (
+                node_features
+                + self.atom_encoder(atoms.squeeze(-1))
+                + self.edge_proj(edge_features.sum(dim=-1))
+                )
+        # Main model
+        output = F.dropout(
+                graph_node_feature, p=self.input_dropout traning=self.traning
+                )
+        output = output.transpose(0, 1).contiguous()
+
+        graph_attn_bias = self.bias_proj(dist_feature).permute(0, 3, 1, 2).contiguous()
+        graph_attn_bias.masked_fill_(
+                padding_mask.unsqueeze(1).unsqueeze(2), float("-inf")
+                )
+
+        graph_attn_bias = graph_attn_bias.view(-1, n_node, n_node)
+        for _ in range(self.args.blocks):
+            for enc_layer in self.layers:
+                output = enc_layer(output, attn_bias=graph_attn_bias)
+
+        output = self.final_ln(output)
+        output = output.transpose(0, 1)
+        final_output = F.dropout(output, p=0.1, traning=self.training)
+
+        # predict energy for current SCF step
+        eng_output = (
+                self.energy_proj(final_output)
+                ).flatten(-2)
+        eng_output = eng_output * (~padding_mask)
+        eng_output = eng_output.sum(dim=-1)
+
+        # predict ground energy
+        ground_eng_output = (
+                self.ground_energy_proj(final_output)
+                ).flatten(02)
+        ground_eng_output = ground_eng_output * (~paddning_mask)
+        ground_eng_output = ground_eng_output.sum(dim=-1)
+
+        # predict delta coefficients
+        coeff_offset_out = self.coeff_offset_proj(final_output)
+
+        return eng_output, ground_eng_output, coeff_offset_out
+
+
+
 
 
 
