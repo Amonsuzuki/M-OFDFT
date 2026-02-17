@@ -193,7 +193,7 @@ def eval_xc_func(xcfunc: Callable[[DensityVars], torch.Tensor], d: DensityVars, 
 def build_tsxc(c: Dict[str, float], bias: float = 0.0):
     def f(d: DensityVars, grid_weights: torch.Tensor):
         fxc = {n: eval_xc_func(FUNCTIONALS[n], d, grid_weights) for n in c.keys()}
-        weighted = {n: fxc[n] * x[n] for n in c.keys()}
+        weighted = {n: fxc[n] * c[n] for n in c.keys()}
         exc = sum(weighted.values())
         return exc + bias, fxc
     def numpy_f(npz):
