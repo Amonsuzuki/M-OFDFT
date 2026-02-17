@@ -1,5 +1,8 @@
 import pyscf
 import pyscf.grad
+import functools
+
+from ofdft.integrals import build_1c1e_helper_mol
 
 def grad_nuc(mol):
     return pyscf.grad.rhf.grad_nuc(mol)
