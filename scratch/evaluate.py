@@ -393,7 +393,7 @@ def worker(args, device, model, taskid):
 
         # output each step stats
         if not args.quiet:
-            print(f'[Step {i+1}] loss = {loss_py} min rho = {minrho} max rho = {maxrho} count(rho < 0) = {rho_le0} corr = {terms["corr"].detach().item()} projgradnorm = {total_grad_proj_norm} gradnorm = {total_grad_norm} rho_mae = {rho_mae} rho_ae_weighted_sum = {rho_ar_weighted_sum} coeff_mae = {coedd_mae} density_loss = {density_loss} hf_force_mae = {hf_force_mae}')
+            print(f'[Step {i+1}] loss = {loss_py} min rho = {minrho} max rho = {maxrho} count(rho < 0) = {rho_le0} corr = {terms["corr"].detach().item()} projgradnorm = {total_grad_proj_norm} gradnorm = {total_grad_norm} rho_mae = {rho_mae} rho_ae_weighted_sum = {rho_ae_weighted_sum} coeff_mae = {coedd_mae} density_loss = {density_loss} hf_force_mae = {hf_force_mae}')
             print(f'    terms = {dict(map(lambda t: (t[0], t[1].item()), terms.items()))}')
 
         # update grad
