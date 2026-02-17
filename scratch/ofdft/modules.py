@@ -205,5 +205,5 @@ class BackwardableOFDFT(BaseOFDFT):
         return loss, terms, None
 
 
-    def forward_and_backward(self, coeff: Callable[[], torch.Tensor], forward_parts=None, backward_parts=None):
+    def forward_and_backward(self, coeffs: Callable[[], torch.Tensor], forward_parts=None, backward_parts=None):
         return self.evaluate(coeffs, backward=True, forward_parts=forward_parts, backward_parts=backward_parts)
