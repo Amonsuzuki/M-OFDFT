@@ -350,7 +350,7 @@ def worker(args, device, model, taskid):
         else:
             minrho = float('nan')
             maxrho = float('nan')
-            rho_le9 = float('nan')
+            rho_le0 = float('nan')
             rho_mae = float('nan')
             rho_ae_weighted_sum = float('nan')
 
