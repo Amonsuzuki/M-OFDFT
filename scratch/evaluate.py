@@ -334,7 +334,7 @@ def worker(args, device, model, taskid):
             decay_delta_coeff *= 0.8
 
         # get total grad float value and projected total grad
-        total_grad_norm = driver.coeff_var_grad.norm().detach().item()
+        total_grad_norm = driver.coeff_var.grad.norm().detach().item()
         projected_grad = grad_proj(driver.coeff_var.grad)
         total_grad_proj_norm = projected_grad.detach().norm()
 
