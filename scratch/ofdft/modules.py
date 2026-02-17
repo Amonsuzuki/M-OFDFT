@@ -1,5 +1,5 @@
 import math
-from typing import Callable, Tuple, Dict
+from typing import Callable, Tuple, Dict, Union
 from contextlib import contextmanager
 
 import torch
