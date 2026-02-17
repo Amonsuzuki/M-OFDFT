@@ -119,7 +119,7 @@ class BackwardableOFDFT(BaseOFDFT):
             elif grid_type == 'lazy':
                 self.grid = LazyGridValueProvider(self.auxmol, grid_coords, grid_weights, grid_slice_size)
     def compute_j(self, coeffs: torch.Tensor):
-        return compute_coulumb(coeffs, self.auxao_2c2e)
+        return compute_coulomb(coeffs, self.auxao_2c2e)
 
     def compute_vext(self, coeffs: torch.Tensor):
         return compute_vext(coeffs, self.auxao_1c1e_nuc)
