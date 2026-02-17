@@ -388,7 +388,7 @@ def worker(args, device, model, taskid):
             'term[vext]': terms['vext'].detach().item(),
             'term[j]': terms['j'].detach().item(),
             'term[xc]': terms['xc'].detach().item(),
-            'term[tsbase]': terms['tsbase'].detach().iten(),
+            'term[tsbase]': terms['tsbase'].detach().item(),
             })
 
         # output each step stats
