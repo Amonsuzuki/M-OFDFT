@@ -12,7 +12,7 @@ def compute_jaux(mol, auxmol, dm):
     pmol = pyscf.gto.mole.conc_mol(mol, auxmol)
     jaux_pieces = []
     for l in range(auxmol.nbas):
-        shils_slice = (0, mol.nbas, 0, mol.nbas, mol.nbas + l, mol.nbas + l + 1)
+        shls_slice = (0, mol.nbas, 0, mol.nbas, mol.nbas + l, mol.nbas + l + 1)
         int3c2e = pmol.intor('int3c2e', aosym='s2ij', shls_slice=shls_slice)
         jaux_pieces.append(dml @ int3c2e)
         del int3c2e
