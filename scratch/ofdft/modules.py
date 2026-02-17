@@ -28,7 +28,7 @@ class BaseOFDFT(nn.Module):
         self.auxmol = auxmol
 
         self.auxao_2c2e = nn.Parameter(torch.tensor(int2c2e_analytical(auxmol)), requires_grad=False)
-        self.auxao_1c1e_nuc = nn.Parameter(torch.tensor(int1c1e_nuc_analytical(auxmol)), require_grad=False)
+        self.auxao_1c1e_nuc = nn.Parameter(torch.tensor(int1c1e_nuc_analytical(auxmol)), requires_grad=False)
         self.preprocess_fn = preprocess_fn
 
 class OFDFT(BaseOFDFT):
