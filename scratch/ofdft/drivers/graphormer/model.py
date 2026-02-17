@@ -245,6 +245,29 @@ class Graphormer3DEncoderLayer(nn.Module):
         self.fc2 = nn.Linear(ffn_embedding_dim, self.embedding_dim)
         self.final_layer_norm = nn.LayerNorm(self.embedding_dim)
 
+    def forward(
+            self,
+            x: Tensor,
+            attn_bias: Tensor = None,
+            ):
+        residual = x
+        x = self.self.attn_layer_norm(x)
+        x = self.self_attn(
+                query=x,
+                attn_bias=attn_bias,
+                )
+        x = F.dropout(x, p=self.dropout, training=self.training)
+        x = residual + x
+
+        residual = x
+        x = self.final_layer_norm(x)
+        x = F.gelu(self.fc1(x))
+        x = F.dropout(x, p=self.activation_dropout, training=self.training)
+        x = self.fc2(x)
+        x = F.dropout(x, p=self.dropout, training=self.training)
+        x = residual + x
+        return x
+
 
 
 class Graphormer3D(nn.Module):
@@ -485,7 +508,7 @@ class Graphormer3D(nn.Module):
                 )
         # Main model
         output = F.dropout(
-                graph_node_feature, p=self.input_dropout, traning=self.traning
+                graph_node_feature, p=self.input_dropout, training=self.training
                 )
         output = output.transpose(0, 1).contiguous()
 
@@ -501,7 +524,7 @@ class Graphormer3D(nn.Module):
 
         output = self.final_ln(output)
         output = output.transpose(0, 1)
-        final_output = F.dropout(output, p=0.1, traning=self.training)
+        final_output = F.dropout(output, p=0.1, training=self.training)
 
         # predict energy for current SCF step
         eng_output = (
