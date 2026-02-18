@@ -39,7 +39,7 @@ def trace_factory(target_abspath: str):
             for i, (k, v) in enumerate(frame.f_locals.items()):
                 if i >= MAX_LOCALS:
                     break
-                locals_snapshot[k] = sage_repr(v)
+                locals_snapshot[k] = safe_repr(v)
         except Exception:
             locals_snapshot = {"<locals_error>": "failed to snapshot locals"}
 

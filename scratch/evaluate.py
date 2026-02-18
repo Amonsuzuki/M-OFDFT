@@ -437,7 +437,7 @@ def worker(args, device, model, taskid):
         etot_1st_deltae_min = stats_df.iloc[delta_e_local_minima[0]]['loss']
         hf_force_mae_1st_deltae_min = stats_df.iloc[delta_e_local_minima[0]]['mae(HF force)']
     else:
-        etot_1st_delta_min = None
+        etot_1st_deltae_min = None
         hf_force_mae_1st_deltae_min = None
     # the minimum etot and hf force mae
     etot_argmin_deltae = stats_df.iloc[delta_e_min_step]['loss']
