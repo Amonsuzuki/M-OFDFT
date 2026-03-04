@@ -8,7 +8,7 @@ use axum::{
 use futures_util::StreamExt;
 use serde::{Deserialize, Serialize};
 use std::{
-    collections::{HashMap, VecDeque },
+    collections::{HashMap, VecDeque},
     path:: PathBuf,
     sync::Arc,
     time::Duration,

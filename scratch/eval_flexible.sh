@@ -1,3 +1,4 @@
+#!/bin/bash
 echo "Molecule: $MOLECULE"
 echo "Checkpoint path: $CKPT_PATH"
 echo "Reparam spec: $REPARAM_SPEC"
