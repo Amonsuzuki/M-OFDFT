@@ -7,7 +7,7 @@
 #SBATCH --mem=32G
 #SBATCH --chdir=/home/asuzuki/M-OFDFT
 
-set -euo pipefail
+set -euox pipefail
 
 MAMBA="$HOME/.local/bin/micromamba"
 
@@ -36,4 +36,4 @@ fi
 COMMENT
 
 #"$MAMBA" run -n py39_v2 bash ./scripts/evaluate/examples/Ethanol.MOFDFT.sh
-"$MAMBA" run -n py39_v2 bash ./scratch/QM9.MOFDFT_slurm.sh
+"$MAMBA" run -n py39_v2 bash ./QM9.MOFDFT_slurm.sh

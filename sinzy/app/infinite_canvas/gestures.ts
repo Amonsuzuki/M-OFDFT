@@ -1,10 +1,12 @@
-export function attachWheelZoom(params: {
+export function attachWheelPanZoom(params: {
 	canvas: HTMLCanvasElement;
 	zoomAt: (sx: number, sy: number, factor: number) => void;
+	panBy: (dx: number, dy: number) => void;
 	scheduleDraw: () => void;
+	bumpCamera: () => void;
 	isActive?: () => boolean;
 }) {
-	const { canvas, zoomAt, scheduleDraw, isActive } = params;
+	const { canvas, zoomAt, panBy, scheduleDraw, bumpCamera, isActive } = params;
 
 	// Track whether pointer is over canvas
 	//let hover = false;
@@ -16,11 +18,16 @@ export function attachWheelZoom(params: {
 		// Prevent page scroll + browser zoom
 		e.preventDefault();
 
-		const zoomFactor = Math.exp(-e.deltaY * 0.001);
-		zoomAt(e.clientX, e.clientY, zoomFactor);
+		const isZoomGesture = e.ctrlKey || e.metaKey;
+		if (isZoomGesture) {
+			const zoomFactor = Math.exp(-e.deltaY * 0.001);
+			zoomAt(e.clientX, e.clientY, zoomFactor);
+		} else {
+			panBy(-e.deltaX * 0.1, -e.deltaY * 0.1);
+		}
 
 		scheduleDraw();
-		//bumpCamera();
+		bumpCamera();
 	};
 
 	// Register hover and wheel events

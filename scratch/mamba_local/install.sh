@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -euox pipefail
 
 MICROMAMBA_BIN="${MICROMAMBA_BIN:-/usr/local/bin/micromamba}"
 MAMBA_ROOT_PREFIX="${MAMBA_ROOT_PREFIX:-/home/amon/.local/share/mamba}"

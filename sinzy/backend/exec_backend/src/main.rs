@@ -289,10 +289,50 @@ async fn start_run(State(st): State<AppState>, Json(req): Json<RunRequest>) -> R
     {
         let log_err = log.clone();
         let tx_err = tx.clone();
+
         tokio::spawn(async move {
             let mut lines = BufReader::new(stderr).lines();
             while let Ok(Some(line)) = lines.next_line().await {
-                record_and_send(&log_err, &tx_err, RunEvent::Stderr { data: format!("{line}\n") }).await;
+                if let Some(json_part) = line.strip_prefix("__TRACE__") {
+                    match serde_json::from_str::<serde_json::Value>(json_part) {
+                        Ok(v) => {
+                            let event = v.get("event").and_then(|x| x.as_str()).unwrap_or("unknown").to_string();
+                            let file = v.get("file").and_then(|x| x.as_str()).unwrap_or("").to_string();
+                            let fn_name = v.get("fn").and_then(|x| x.as_str()).unwrap_or("").to_string();
+                            let line_no = v.get("line").and_then(|x| x.as_u64()).unwrap_or(0) as u32;
+                            let locals = v.get("locals").cloned().unwrap_or_else(|| serde_json::Value::Null);
+
+                            record_and_send(&log_err, &tx_err, RunEvent::Trace {
+                                event,
+                                file,
+                                fn_name,
+                                line: line_no,
+                                locals,
+                            }).await;
+                        }
+                        Err(_) => {
+                            record_and_send(&log_err, &tx_err, RunEvent::Stderr { data: format!("{line}\n") }).await;
+                        }
+                    }
+                } else {
+                    if line.trim_start().starts_with('+') {
+                        record_and_send(
+                            &log_err,
+                            &tx_err,
+                            RunEvent::Trace {
+                                event: "xtrace".to_string(),
+                                file: req.name.clone(),
+                                fn_name: "sh".to_string(),
+                                line: 0,
+                                locals: serde_json::json!({
+                                    "cmd": line.trim()
+                                }),
+                            },
+                        ).await;
+                    } else {
+                        record_and_send(&log_err, &tx_err, RunEvent::Stderr { data: format!("{line}\n") }).await;
+                    }
+                }
             }
         });
     }

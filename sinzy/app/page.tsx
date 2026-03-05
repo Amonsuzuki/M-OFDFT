@@ -1,15 +1,21 @@
 "use client";
 
 // React hooks for lifecycle and DOM reference
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { openRunEvents, startRun, stopRun, type RunEvent } from "../backend/backend";
 
+// mermaid flowchart
+import mermaid from "mermaid";
+import { createGraph, addTraceSequenceStep, toMermaidFlowchart } from "./types";
+import { MermaidView } from "./MermaidView";
+
+
 // import child functions
-import type { CodeBlockModel, Vec2 } from "./infinite_canvas/types";
+import type { CodeBlockModel, Vec2 } from "./types";
 import { useCamera } from "./infinite_canvas/camera";
 import { drawGridPoints } from "./infinite_canvas/gridRenderer";
-import { attachPinchZoom, attachSafariGestureBlock, attachWheelZoom } from "./infinite_canvas/gestures";
+import { attachPinchZoom, attachSafariGestureBlock, attachWheelPanZoom } from "./infinite_canvas/gestures";
 import { startDrag } from "./infinite_canvas/drag";
 
 import styles from "./infinite_canvas/InfiniteCanvas.module.css";
@@ -25,34 +31,6 @@ type RunState = {
 	blockId: string,
 	logs: RunEvent[];
 };
-
-/*
-async function runScript(name) {
-	const res = await fetch("http://127.0.0.1:8787/api/run", {
-		method: "POST",
-		headers: { "Content-Type": "application/json" },
-		body: JSON.stringify({ name }),
-	});
-	const { run_id } = await res.json();
-
-	const es = new EventSource(`http://127.0.0.1:8787/api/run/${run_id}/events`);
-	
-	es.onmessage = (msg) => {
-		const evt = JSON.parse(msg.data);
-		console.log(evt);
-	};
-
-	es.onerror = () => {
-		es.close();
-	};
-
-	return { run_id, es };
-}
-
-async function stopRun(run_id) {
-	await fetch(`http://127.0.0.1:8787/api/run/${run_id}/stop`, { method: "POST" });
-}
-*/
 
 export default function InfiniteCanvas() {
 	const [runState, setRunState] = useState<RunState | null>(null);
@@ -79,6 +57,10 @@ export default function InfiniteCanvas() {
 			const run_id = (out as any).run_id ?? (out as any).runId;
 			if (!run_id) throw new Error("stateRun returned no run_id/runId");
 
+			// create new graph per run
+			graphRef.current = createGraph(run_id);
+			setGraphVersion((v) => v + 1);
+
 			setRunState({ runId: run_id, blockId, logs: [] });
 
 			const es = openRunEvents(
@@ -87,6 +69,7 @@ export default function InfiniteCanvas() {
 				(evt) => {
 					console.log("[SSE event]", evt);
 					appendEvent(evt);
+					appendTraceToGraph(evt);
 
 					if (evt.type == "exit") {
 						esRef.current?.close();
@@ -172,6 +155,63 @@ export default function InfiniteCanvas() {
 		});
 	}, []);
 
+	const graphRef = useRef<ReturnType<typeof createGraph> | null>(null);
+	const [graphVersion, setGraphVersion] = useState(0);
+
+	useEffect(() => {
+		mermaid.initialize({
+			startOnLoad: false,
+			securityLevel: "strict",
+		});
+	}, []);
+
+	const mermaidText = useMemo(() => {
+		if (!graphRef.current) return "";
+		return toMermaidFlowchart(graphRef.current);
+	}, [graphVersion]);
+
+	const appendTraceToGraph = (evt: RunEvent) => {
+		if (evt.type !== "trace") return;
+		if (!graphRef.current) return;
+
+		const anyEvt = evt as any;
+		const cmd = anyEvt.locals?.cmd as string | undefined;
+
+		const label = (cmd ?? `${anyEvt.fn_name}:${anyEvt.line}`)
+			.replace(/\s+/g, " ")
+			.slice(0, 80)
+
+		addTraceSequenceStep(graphRef.current, {
+			fn_name: label,
+			file: "shell",
+			line: 0,
+			event: "op",
+		});
+
+		requestGraphRender();
+	};
+
+	const pendingRef = useRef(false);
+
+	const requestGraphRender = () => {
+		if (pendingRef.current) return;
+		pendingRef.current = true;
+		requestAnimationFrame(() => {
+			pendingRef.current = false;
+			setGraphVersion((v) => v + 1);
+		});
+	};
+
+	const appendTrace = (evt: RunEvent) => {
+		if (evt.type !== "trace") return;
+		if (!graphRef.current) return;
+		addTraceSequenceStep(graphRef.current, { /* ... */ });
+		requestGraphRender();
+	};
+
+	const [cameraVersion, setCameraVersion] = useState(0);
+	const bumpCamera = () => setCameraVersion((v) => v + 1);
+
 	useEffect(() => {
 		// GEt canvas and 2D rendering context
 		const canvas = canvasRef.current;
@@ -228,12 +268,17 @@ export default function InfiniteCanvas() {
 		canvas.addEventListener("pointerenter", onEnter);
 		canvas.addEventListener("pointerleave", onLeave);
 
+		const panBy = (dx: number, dy: number) => {
+			camera.offsetRef.current.x += dx;
+			camera.offsetRef.current.y += dy;
+		};
 
-		const cleanupWheel = attachWheelZoom({
+		const cleanupWheel = attachWheelPanZoom({
 			canvas,
-			camera,
 			zoomAt,
+			panBy,
 			scheduleDraw,
+			bumpCamera,
 			isActive: () => hoverRef.current,
 		});
 
@@ -285,6 +330,7 @@ export default function InfiniteCanvas() {
 		style={{
 			transform: `translate(${camera.offsetRef.current.x}px, ${camera.offsetRef.current.y}px) scale(${camera.scaleRef.current})`,
 		}}
+		data-camver={cameraVersion}
 		>
 		{blocks.map((b) => (
 			<div
@@ -346,6 +392,9 @@ export default function InfiniteCanvas() {
 			</button>
 		</div>
 		))}
+		<div style={{ position: "fixed", right: 1, top: 240, zIndex: 20, width: 4200, height: 320, overflow: "auto", background: "white" }}>
+		<MermaidView text={mermaidText} />
+		</div>
 		</div>
 
 		</div>

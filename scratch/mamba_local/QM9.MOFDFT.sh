@@ -26,7 +26,7 @@ echo ">>> setting micromamba environment"
 #bash ./scratch/install.sh
 
 echo ">>> about to run eval_flexible.sh"
-$MICROMAMBA run -r $ROOT_PREFIX -n $ENV_NAME bash ./scratch/eval_flexible.sh
+$MICROMAMBA run -r $ROOT_PREFIX -n $ENV_NAME bash -x ./scratch/eval_flexible.sh
 echo ">>> finished eval_flexbile.sh, exit=$?"
 
 path=$OUTPUT_ROOT/total.csv
